@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bron — бронь столика в 2 клика</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Unbounded:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-in">
+      <a class="logo" href="/">
+        <span class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="6"/><path d="M8 20h8M12 16v4"/></svg></span>
+        Bron
+      </a>
+      <nav>
+        <a href="#book" class="hide-sm">Забронировать</a>
+        <a href="#how" class="hide-sm">Как это работает</a>
+        <a class="btn pill ghost" href="/admin">Для заведений</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <div>
+        <span class="eyebrow"><span class="live-dot"></span>Свободные места в реальном времени</span>
+        <h1>Ваш столик —<br>в <em>два клика</em></h1>
+        <p>Без звонков и визитов наугад. Смотрите схему зала, выбирайте стол у окна или в тихом углу и получайте подтверждение мгновенно.</p>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat"><b id="hsPlaces">–</b><span>заведения</span></div>
+        <div class="hero-stat"><b id="hsTables">–</b><span>столов на схемах</span></div>
+        <div class="hero-stat"><b id="hsFree">–</b><span>свободно на выбранное время</span></div>
+      </div>
+    </section>
+
+    <div id="book">
+      <div class="step-title"><span class="n">1</span><h2>Выберите заведение</h2></div>
+      <div class="places" id="places"></div>
+
+      <div class="step-title"><span class="n">2</span><h2>Когда и сколько гостей</h2></div>
+      <div class="card picker">
+        <div class="picker-row"><span class="lbl">Дата</span><div class="chips" id="days"></div></div>
+        <div class="picker-row"><span class="lbl">Время</span><div class="chips" id="times"></div></div>
+        <div class="picker-row"><span class="lbl">Гостей</span>
+          <div><div class="stepper">
+            <button type="button" id="gMinus" aria-label="Меньше гостей">−</button>
+            <output id="guests">2 гостя</output>
+            <button type="button" id="gPlus" aria-label="Больше гостей">+</button>
+          </div></div>
+        </div>
+      </div>
+
+      <div class="step-title"><span class="n">3</span><h2>Выберите стол на схеме</h2></div>
+      <div class="layout">
+        <section class="card hall-card">
+          <div class="hall-head">
+            <div>
+              <h3 id="hallTitle">Зал</h3>
+              <div class="sub" id="hallSub"></div>
+            </div>
+            <div class="legend">
+              <span class="free"><i></i>Свободен</span>
+              <span class="booked"><i></i>Забронирован</span>
+              <span class="seated"><i></i>Гости за столом</span>
+            </div>
+          </div>
+          <div id="hall"></div>
+          <div class="hall-foot">
+            <span id="hallHint"></span>
+            <div class="meter" title="Загрузка зала"><i class="m-seated" id="mSeated"></i><i class="m-booked" id="mBooked"></i></div>
+          </div>
+        </section>
+
+        <aside class="card side" id="panel"></aside>
+      </div>
+    </div>
+
+    <section class="features" id="how">
+      <div class="card feature">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><circle cx="15" cy="15" r="2"/></svg></div>
+        <h4>Интерактивная схема</h4>
+        <p>Видите весь зал и выбираете конкретный стол: у окна, у бара или в тихом углу.</p>
+      </div>
+      <div class="card feature">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+        <h4>В реальном времени</h4>
+        <p>Статус столов обновляется сразу, как только кто-то бронирует или садится.</p>
+      </div>
+      <div class="card feature">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/></svg></div>
+        <h4>Мгновенная бронь</h4>
+        <p>Без звонков, переписок и ожидания ответа администратора.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="wrap"><span>© Bron, 2026 · MVP</span><a href="/admin" class="muted">Вход для заведений</a></div>
+  </footer>
+
+  <script src="/hall.js"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const MAX_GUESTS = 8;
+
+    let restaurants = [];
+    let config = {};
+    let current = null;        // выбранное заведение
+    let date = todayStr();
+    let time = null;
+    let guests = 2;
+    let statesBy = {};         // id заведения → статусы столов
+    let selectedId = null;
+    let lastBooking = null;    // экран подтверждения
+
+    const states = () => (current && statesBy[current.id]) || [];
+
+    // ---------- выбор даты / времени / гостей ----------
+    function slotsFor(d) {
+      const out = [];
+      const isToday = d === todayStr();
+      const now = new Date();
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+      for (let m = config.openHour * 60; m <= (config.closeHour - config.bookingHours) * 60; m += 30) {
+        if (isToday && m + 15 < nowMin) continue;
+        out.push(`${pad(Math.floor(m / 60))}:${pad(m % 60)}`);
+      }
+      return out;
+    }
+
+    function renderDays() {
+      const box = $('days');
+      box.innerHTML = '';
+      for (let i = 0; i < 10; i++) {
+        const d = new Date(); d.setDate(d.getDate() + i);
+        const v = todayStr(d);
+        if (i === 0 && !slotsFor(v).length) continue; // сегодня уже поздно
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'chip day' + (v === date ? ' active' : '');
+        const top = i === 0 ? 'Сегодня' : i === 1 ? 'Завтра' : d.toLocaleDateString('ru-RU', { weekday: 'short' });
+        b.innerHTML = `<small>${top}</small><b>${d.getDate()}</b>`;
+        b.title = d.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+        b.onclick = () => { date = v; selectedId = null; renderDays(); renderTimes(); load(); };
+        box.appendChild(b);
+      }
+    }
+
+    function renderTimes() {
+      const slots = slotsFor(date);
+      if (!slots.includes(time)) time = slots[0] || null;
+      const box = $('times');
+      box.innerHTML = '';
+      for (const v of slots) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'chip' + (v === time ? ' active' : '');
+        b.textContent = v;
+        b.onclick = () => { time = v; selectedId = null; renderTimes(); load(); };
+        box.appendChild(b);
+      }
+      const act = box.querySelector('.active');
+      if (act) box.scrollLeft = act.offsetLeft - box.offsetLeft - 8;
+    }
+
+    function renderGuests() {
+      $('guests').textContent = `${guests} ${plural(guests, 'гость', 'гостя', 'гостей')}`;
+      $('gMinus').disabled = guests <= 1;
+      $('gPlus').disabled = guests >= MAX_GUESTS;
+    }
+    function setGuests(n) {
+      guests = Math.max(1, Math.min(MAX_GUESTS, n));
+      renderGuests();
+      const t = current.tables.find((x) => x.id === selectedId);
+      if (t && t.seats < guests) selectedId = null;
+      draw();
+    }
+
+    // ---------- заведения ----------
+    function renderPlaces() {
+      $('places').innerHTML = '';
+      for (const r of restaurants) {
+        const st = statesBy[r.id] || [];
+        const free = st.filter((s) => s.state === 'free').length;
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'place' + (current && current.id === r.id ? ' active' : '');
+        b.innerHTML = `
+          <div class="place-cover" style="background:${r.cover}">${escapeHtml(r.name[0])}</div>
+          <div>
+            <div class="place-name">${escapeHtml(r.name)}</div>
+            <div class="place-meta">${escapeHtml(r.cuisine)} · ${escapeHtml(r.address)}</div>
+            <div class="place-tags">
+              <span class="tag">${st.length ? `Свободно ${free} из ${st.length}` : `${r.tables.length} столов`}</span>
+              ${(r.tags || []).slice(0, 2).map((t) => `<span class="tag">${escapeHtml(t)}</span>`).join('')}
+            </div>
+          </div>`;
+        b.onclick = () => { current = r; selectedId = null; lastBooking = null; renderPlaces(); draw(); };
+        $('places').appendChild(b);
+      }
+    }
+
+    // ---------- данные ----------
+    async function load() {
+      if (!time) { statesBy = {}; renderPlaces(); draw(); return; }
+      const res = await Promise.all(restaurants.map((r) =>
+        api(`/api/tables?restaurant=${r.id}&date=${date}&time=${time}`)));
+      res.forEach((d, i) => { statesBy[restaurants[i].id] = d.tables; });
+      const sel = states().find((s) => s.id === selectedId);
+      if (sel && sel.state !== 'free') { selectedId = null; toast('Этот стол только что заняли'); }
+      renderPlaces();
+      draw();
+    }
+
+    // ---------- схема ----------
+    function draw() {
+      const st = states();
+      renderHall($('hall'), current, {
+        states: st,
+        selected: selectedId,
+        isDisabled: (t, s) => s.state === 'free' && t.seats < guests,
+        isLocked: (t, s) => s.state !== 'free',
+        tipExtra: (t, s) => (s.state === 'free' && t.seats < guests ? `Мало мест для ${guests} гостей` : s.state === 'free' ? 'Нажмите, чтобы выбрать' : ''),
+        onSelect: (t) => {
+          selectedId = t.id; lastBooking = null; draw();
+          if (window.innerWidth < 960) $('panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        },
+      });
+
+      const c = { free: 0, booked: 0, seated: 0 };
+      st.forEach((s) => c[s.state]++);
+      const total = st.length || 1;
+      $('hallTitle').textContent = `${current.name} · ${current.cuisine.toLowerCase()}`;
+      $('hallSub').textContent = time ? `${formatDate(date)}, ${time} — на ${config.bookingHours} часа` : 'Нет доступного времени';
+      $('hallHint').textContent = time ? `Свободно ${c.free} из ${st.length} столов` : 'Выберите другую дату';
+      $('mSeated').style.width = (c.seated / total) * 100 + '%';
+      $('mBooked').style.width = (c.booked / total) * 100 + '%';
+
+      let free = 0, tables = 0;
+      for (const r of restaurants) {
+        tables += r.tables.length;
+        free += (statesBy[r.id] || []).filter((s) => s.state === 'free').length;
+      }
+      $('hsPlaces').textContent = restaurants.length;
+      $('hsTables').textContent = tables;
+      $('hsFree').textContent = time ? free : '—';
+      renderPanel();
+    }
+
+    // ---------- боковая панель ----------
+    function renderPanel() {
+      const p = $('panel');
+      const t = current.tables.find((x) => x.id === selectedId);
+      if (!t && lastBooking) return renderTicket();
+      if (!t) {
+        p.innerHTML = `
+          <div class="empty-state">
+            <svg class="empty-ill" viewBox="0 0 120 90" fill="none">
+              <rect x="20" y="10" width="80" height="70" rx="14" fill="var(--surface-2)" stroke="var(--line)"/>
+              <circle cx="60" cy="45" r="16" fill="var(--gold)"/>
+              <rect x="52" y="17" width="16" height="9" rx="4" fill="var(--chair)" stroke="var(--line-2)"/>
+              <rect x="52" y="64" width="16" height="9" rx="4" fill="var(--chair)" stroke="var(--line-2)"/>
+              <rect x="27" y="40" width="9" height="16" rx="4" fill="var(--chair)" stroke="var(--line-2)"/>
+              <rect x="84" y="40" width="9" height="16" rx="4" fill="var(--chair)" stroke="var(--line-2)"/>
+              <path d="M74 56l10 22 4-8 8-3z" fill="var(--ink)" stroke="var(--surface)" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+            <h3>Выберите стол</h3>
+            <p>Нажмите на любой серый стол на схеме зала</p>
+            <ul class="howto">
+              <li><i style="background:var(--free-2)"></i>Серый — свободен, можно бронировать</li>
+              <li><i style="background:var(--booked)"></i>Красный — уже забронирован</li>
+              <li><i style="background:var(--seated)"></i>Синий — за столом сидят гости</li>
+            </ul>
+          </div>`;
+        return;
+      }
+      p.innerHTML = `
+        <div class="sel-head">
+          <div class="sel-badge">${t.id}</div>
+          <div>
+            <h3>Стол ${t.id}</h3>
+            <div class="muted" style="font-size:14px">${escapeHtml(t.zone)} · до ${t.seats} ${plural(t.seats, 'гостя', 'гостей', 'гостей')}</div>
+          </div>
+        </div>
+        <div class="facts">
+          <div class="fact"><small>Дата</small><b>${formatDate(date)}</b></div>
+          <div class="fact"><small>Время</small><b>${time}</b></div>
+          <div class="fact"><small>Гостей</small><b>${guests}</b></div>
+          <div class="fact"><small>Место</small><b>${escapeHtml(current.name)}</b></div>
+        </div>
+        <form class="form" id="bookForm" novalidate>
+          <label class="field"><span>Ваше имя</span>
+            <input class="input" name="name" required maxlength="60" autocomplete="name" placeholder="Как к вам обращаться"></label>
+          <label class="field"><span>Телефон</span>
+            <input class="input" name="phone" type="tel" required autocomplete="tel" placeholder="+7 900 000-00-00"></label>
+          <p class="error" id="err"></p>
+          <button class="btn block" type="submit">Забронировать стол</button>
+          <button class="link-btn" type="button" id="cancelSel">Выбрать другой стол</button>
+          <p class="fine">Подтверждение придёт сразу — без звонков</p>
+        </form>`;
+      $('cancelSel').onclick = () => { selectedId = null; draw(); };
+      $('bookForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const f = new FormData(e.target);
+        const btn = e.target.querySelector('button[type=submit]');
+        btn.disabled = true;
+        btn.textContent = 'Бронируем…';
+        $('err').textContent = '';
+        try {
+          const { booking } = await api('/api/bookings', {
+            method: 'POST',
+            body: {
+              restaurantId: current.id, tableId: t.id, date, time, guests,
+              name: f.get('name'), phone: f.get('phone'),
+            },
+          });
+          lastBooking = { b: booking, t, r: current };
+          selectedId = null;
+          await load();
+        } catch (err) {
+          $('err').textContent = err.message;
+          btn.disabled = false;
+          btn.textContent = 'Забронировать стол';
+        }
+      };
+    }
+
+    function renderTicket() {
+      const { b, t, r } = lastBooking;
+      $('panel').innerHTML = `
+        <div class="ticket">
+          <div class="ticket-top">
+            <div class="ok"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg></div>
+            <h3>Стол забронирован</h3>
+            <p>Ждём вас в ${escapeHtml(r.name)}</p>
+          </div>
+          <div class="ticket-cut"></div>
+          <div class="ticket-body">
+            <div><small>Дата</small><b>${formatDate(b.date)}</b></div>
+            <div><small>Время</small><b>${b.time}</b></div>
+            <div><small>Стол</small><b>${t.id} · ${escapeHtml(t.zone)}</b></div>
+            <div><small>Гостей</small><b>${b.guests}</b></div>
+            <div style="grid-column:1/-1"><small>На имя</small><b>${escapeHtml(b.name)}</b></div>
+            <div class="ticket-code"><small>Номер брони</small><b>${b.id.toUpperCase()}</b></div>
+          </div>
+        </div>
+        <button class="btn ghost block" id="again" style="margin-top:14px">Забронировать ещё</button>`;
+      $('again').onclick = () => { lastBooking = null; renderPanel(); };
+    }
+
+    // ---------- старт ----------
+    async function init() {
+      const data = await api('/api/restaurants');
+      restaurants = data.restaurants;
+      config = data.config;
+      current = restaurants[0];
+      // ссылка вида /?date=2026-10-23&time=19:00&restaurant=sakura открывает нужный слот
+      const q = new URLSearchParams(location.search);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(q.get('date') || '') && q.get('date') >= todayStr()) date = q.get('date');
+      if (q.get('time')) time = q.get('time');
+      current = restaurants.find((r) => r.id === q.get('restaurant')) || current;
+      if (!slotsFor(date).length) { const d = new Date(); d.setDate(d.getDate() + 1); date = todayStr(d); }
+      renderDays();
+      renderTimes();
+      renderGuests();
+      $('gMinus').onclick = () => setGuests(guests - 1);
+      $('gPlus').onclick = () => setGuests(guests + 1);
+      await load();
+      // живое обновление: кто-то забронировал или хостес посадила гостей
+      onLiveUpdate(() => load());
+    }
+    init();
+  </script>
+</body>
+</html>

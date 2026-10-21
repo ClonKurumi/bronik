@@ -1,0 +1,110 @@
+[
+  {
+    "id": "2f2b8a72",
+    "restaurantId": "sakura",
+    "tableId": "S3",
+    "date": "2026-10-22",
+    "time": "02:27",
+    "name": "Анна",
+    "phone": "+7 900 123-45-67",
+    "guests": 3,
+    "status": "done",
+    "createdAt": "2026-10-21T20:27:56.930Z"
+  },
+  {
+    "id": "bc177a3b",
+    "restaurantId": "sakura",
+    "tableId": "S6",
+    "date": "2026-10-22",
+    "time": "02:27",
+    "name": "Гости без брони",
+    "phone": "",
+    "guests": 2,
+    "status": "done",
+    "createdAt": "2026-10-21T20:27:56.930Z"
+  },
+  {
+    "id": "5e7bbe5d",
+    "restaurantId": "sakura",
+    "tableId": "S8",
+    "date": "2026-10-22",
+    "time": "02:27",
+    "name": "Гости без брони",
+    "phone": "",
+    "guests": 2,
+    "status": "done",
+    "createdAt": "2026-10-21T20:27:56.930Z"
+  },
+  {
+    "id": "e08988ef",
+    "restaurantId": "sakura",
+    "tableId": "S1",
+    "date": "2026-10-22",
+    "time": "10:00",
+    "name": "Илья",
+    "phone": "+7 900 123-45-67",
+    "guests": 2,
+    "status": "cancelled",
+    "createdAt": "2026-10-21T20:27:56.930Z"
+  },
+  {
+    "id": "f8f7a0f7",
+    "restaurantId": "sakura",
+    "tableId": "S5",
+    "date": "2026-10-22",
+    "time": "10:00",
+    "name": "Марина",
+    "phone": "+7 900 123-45-67",
+    "guests": 5,
+    "status": "cancelled",
+    "createdAt": "2026-10-21T20:27:56.930Z"
+  },
+  {
+    "id": "6896209e",
+    "restaurantId": "sakura",
+    "tableId": "S10",
+    "date": "2026-10-22",
+    "time": "10:00",
+    "name": "Корпоратив ООО «Ромашка»",
+    "phone": "+7 900 123-45-67",
+    "guests": 6,
+    "status": "cancelled",
+    "createdAt": "2026-10-21T20:27:56.930Z"
+  },
+  {
+    "id": "27b14e9f",
+    "restaurantId": "trattoria",
+    "tableId": "T2",
+    "date": "2026-10-22",
+    "time": "02:27",
+    "name": "Олег",
+    "phone": "+7 900 123-45-67",
+    "guests": 4,
+    "status": "seated",
+    "createdAt": "2026-10-21T20:27:56.930Z"
+  },
+  {
+    "id": "fbf5dfb1",
+    "restaurantId": "trattoria",
+    "tableId": "T7",
+    "date": "2026-10-22",
+    "time": "10:00",
+    "name": "День рождения",
+    "phone": "+7 900 123-45-67",
+    "guests": 8,
+    "status": "booked",
+    "createdAt": "2026-10-21T20:27:56.930Z"
+  },
+  {
+    "id": "a91b25c4",
+    "restaurantId": "trattoria",
+    "tableId": "T10",
+    "date": "2026-10-22",
+    "time": "10:00",
+    "name": "Света",
+    "phone": "+7 900 123-45-67",
+    "guests": 3,
+    "status": "booked",
+    "createdAt": "2026-10-21T20:27:56.930Z"
+  }
+]
