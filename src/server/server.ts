@@ -12,6 +12,12 @@ type Res = http.ServerResponse;
 
 // Скомпилированный файл лежит в dist/server, корень проекта — на два уровня выше.
 const ROOT = path.resolve(__dirname, '..', '..');
+// Настройки (пароль панели и т.п.) можно держать в файле .env в корне проекта.
+try {
+  process.loadEnvFile(path.join(ROOT, '.env'));
+} catch {
+  // файла нет — берём только переменные окружения
+}
 const PORT = Number(process.env.PORT) || 3000;
 const PUBLIC_DIR = path.join(ROOT, 'public');
 const DATA_FILE = process.env.BRON_DATA || path.join(ROOT, 'data', 'bookings.json');
@@ -143,15 +149,66 @@ function readBody(req: Req): Promise<Record<string, unknown>> {
 }
 const str = (v: unknown): string => (typeof v === 'string' ? v : '');
 
+// ---------- вход в панель заведения ----------
+// Пароль задаётся в ADMIN_PASSWORD. После входа браузер получает cookie с подписью
+// (HMAC от пароля): сервер ничего не хранит, а смена пароля разлогинивает всех.
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
+const SESSION_COOKIE = 'bron_admin';
+const SESSION_DAYS = 7;
+const sessionKey = crypto.createHash('sha256').update(`bron-admin:${ADMIN_PASSWORD}`).digest();
+
+function sign(value: string): string {
+  return crypto.createHmac('sha256', sessionKey).update(value).digest('hex');
+}
+function safeEqual(a: string, b: string): boolean {
+  const ha = crypto.createHash('sha256').update(a).digest();
+  const hb = crypto.createHash('sha256').update(b).digest();
+  return crypto.timingSafeEqual(ha, hb);
+}
+function getCookie(req: Req, name: string): string | null {
+  for (const part of (req.headers.cookie || '').split(';')) {
+    const i = part.indexOf('=');
+    if (i > 0 && part.slice(0, i).trim() === name) return decodeURIComponent(part.slice(i + 1).trim());
+  }
+  return null;
+}
+function isAdmin(req: Req): boolean {
+  if (!ADMIN_PASSWORD) return false;
+  const [exp, mac] = (getCookie(req, SESSION_COOKIE) || '').split('.');
+  if (!exp || !mac || Number(exp) < Date.now()) return false;
+  return safeEqual(mac, sign(exp));
+}
+function sessionCookie(req: Req, value: string, maxAgeSec: number): string {
+  const secure = req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : '';
+  return `${SESSION_COOKIE}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAgeSec}${secure}`;
+}
+
+// Защита от подбора: после 5 неверных паролей с одного IP — пауза 5 минут.
+const MAX_TRIES = 5;
+const LOCK_MS = 5 * 60 * 1000;
+const loginFails = new Map<string, { count: number; until: number }>();
+function clientIp(req: Req): string {
+  return req.socket.remoteAddress || '?';
+}
+
+function redirect(res: Res, location: string): void {
+  res.writeHead(302, { Location: location, 'Cache-Control': 'no-store' });
+  res.end();
+}
+
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
   '.svg': 'image/svg+xml',
 };
-function serveStatic(res: Res, pathname: string): void {
+function serveStatic(req: Req, res: Res, pathname: string): void {
   if (pathname === '/') pathname = '/index.html';
   if (pathname === '/admin') pathname = '/admin.html';
+  if (pathname === '/login') pathname = '/login.html';
+  // панель — только после входа, страница входа — только до него
+  if (pathname === '/admin.html' && !isAdmin(req)) return redirect(res, '/login');
+  if (pathname === '/login.html' && isAdmin(req)) return redirect(res, '/admin');
   const file = path.normalize(path.join(PUBLIC_DIR, pathname));
   if (!file.startsWith(PUBLIC_DIR)) return sendJson(res, 403, { error: 'forbidden' });
   fs.readFile(file, (err, buf) => {
@@ -160,7 +217,12 @@ function serveStatic(res: Res, pathname: string): void {
       res.end('Не найдено');
       return;
     }
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream' });
+    const ext = path.extname(file);
+    res.writeHead(200, {
+      'Content-Type': MIME[ext] || 'application/octet-stream',
+      // HTML не кешируем, чтобы после выхода панель не открывалась из кеша
+      ...(ext === '.html' ? { 'Cache-Control': 'no-store' } : {}),
+    });
     res.end(buf);
   });
 }
@@ -179,6 +241,38 @@ function validSlot(date: string, time: string): string | null {
 async function api(req: Req, res: Res, url: URL): Promise<void> {
   const p = url.pathname;
   const q = url.searchParams;
+
+  // Маршруты панели заведения — только после входа.
+  const adminOnly =
+    (req.method === 'GET' && p === '/api/bookings') ||
+    (req.method === 'PATCH' && p.startsWith('/api/bookings/')) ||
+    (req.method === 'POST' && p === '/api/walkin');
+  if (adminOnly && !isAdmin(req)) return sendJson(res, 401, { error: 'Нужно войти в панель заведения' });
+
+  if (req.method === 'POST' && p === '/api/login') {
+    if (!ADMIN_PASSWORD) return sendJson(res, 503, { error: 'Пароль панели не задан на сервере (ADMIN_PASSWORD)' });
+    const ip = clientIp(req);
+    const fails = loginFails.get(ip);
+    if (fails && fails.count >= MAX_TRIES && fails.until > Date.now()) {
+      const min = Math.ceil((fails.until - Date.now()) / 60000);
+      return sendJson(res, 429, { error: `Слишком много попыток. Попробуйте через ${min} мин.` });
+    }
+    const password = str((await readBody(req)).password);
+    if (!safeEqual(password, ADMIN_PASSWORD)) {
+      const count = fails && fails.until > Date.now() ? fails.count + 1 : 1;
+      loginFails.set(ip, { count, until: Date.now() + LOCK_MS });
+      return sendJson(res, 401, { error: 'Неверный пароль' });
+    }
+    loginFails.delete(ip);
+    const exp = String(Date.now() + SESSION_DAYS * 24 * 3600 * 1000);
+    res.setHeader('Set-Cookie', sessionCookie(req, `${exp}.${sign(exp)}`, SESSION_DAYS * 24 * 3600));
+    return sendJson(res, 200, { ok: true });
+  }
+
+  if (req.method === 'POST' && p === '/api/logout') {
+    res.setHeader('Set-Cookie', sessionCookie(req, '', 0));
+    return sendJson(res, 200, { ok: true });
+  }
 
   if (req.method === 'GET' && p === '/api/restaurants') {
     return sendJson(res, 200, {
@@ -314,7 +408,7 @@ http
     const url = new URL(req.url ?? '/', `http://${req.headers.host}`);
     try {
       if (url.pathname.startsWith('/api/')) return await api(req, res, url);
-      serveStatic(res, url.pathname);
+      serveStatic(req, res, url.pathname);
     } catch (e) {
       console.error(e);
       sendJson(res, 500, { error: 'Ошибка сервера' });
@@ -323,4 +417,5 @@ http
   .listen(PORT, () => {
     console.log(`Bron запущен:  http://localhost:${PORT}`);
     console.log(`Панель хостес: http://localhost:${PORT}/admin`);
+    if (!ADMIN_PASSWORD) console.warn('⚠ ADMIN_PASSWORD не задан — вход в панель закрыт. Добавьте его в файл .env');
   });

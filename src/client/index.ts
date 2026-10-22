@@ -8,17 +8,14 @@ import {
 
 const MAX_GUESTS = 8;
 
-let restaurants: Restaurant[] = [];
 let config: Config = { bookingHours: 2, openHour: 10, closeHour: 23 };
-let current!: Restaurant;       // выбранное заведение (задаётся в init)
+let current!: Restaurant;       // заведение (задаётся в init)
 let date = todayStr();
 let time: string | null = null;
 let guests = 2;
-let statesBy: Record<string, TableStatus[]> = {}; // id заведения → статусы столов
+let tableStates: TableStatus[] = []; // статусы столов на выбранное время
 let selectedId: string | null = null;
 let lastBooking: { b: Booking; t: Table; r: Restaurant } | null = null; // экран подтверждения
-
-const states = (): TableStatus[] => statesBy[current.id] || [];
 
 // ---------- выбор даты / времени / гостей ----------
 function slotsFor(d: string): string[] {
@@ -81,45 +78,19 @@ function setGuests(n: number): void {
   draw();
 }
 
-// ---------- заведения ----------
-function renderPlaces(): void {
-  $('places').innerHTML = '';
-  for (const r of restaurants) {
-    const st = statesBy[r.id] || [];
-    const free = st.filter((s) => s.state === 'free').length;
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'place' + (current.id === r.id ? ' active' : '');
-    b.innerHTML = `
-      <div class="place-cover" style="background:${r.cover}">${escapeHtml(r.name[0])}</div>
-      <div>
-        <div class="place-name">${escapeHtml(r.name)}</div>
-        <div class="place-meta">${escapeHtml(r.cuisine)} · ${escapeHtml(r.address)}</div>
-        <div class="place-tags">
-          <span class="tag">${st.length ? `Свободно ${free} из ${st.length}` : `${r.tables.length} столов`}</span>
-          ${(r.tags || []).slice(0, 2).map((t) => `<span class="tag">${escapeHtml(t)}</span>`).join('')}
-        </div>
-      </div>`;
-    b.onclick = () => { current = r; selectedId = null; lastBooking = null; renderPlaces(); draw(); };
-    $('places').appendChild(b);
-  }
-}
-
 // ---------- данные ----------
 async function load(): Promise<void> {
-  if (!time) { statesBy = {}; renderPlaces(); draw(); return; }
-  const res = await Promise.all(restaurants.map((r) =>
-    api<TablesResponse>(`/api/tables?restaurant=${r.id}&date=${date}&time=${time}`)));
-  res.forEach((d, i) => { statesBy[restaurants[i].id] = d.tables; });
-  const sel = states().find((s) => s.id === selectedId);
+  if (!time) { tableStates = []; draw(); return; }
+  const res = await api<TablesResponse>(`/api/tables?restaurant=${current.id}&date=${date}&time=${time}`);
+  tableStates = res.tables;
+  const sel = tableStates.find((s) => s.id === selectedId);
   if (sel && sel.state !== 'free') { selectedId = null; toast('Этот стол только что заняли'); }
-  renderPlaces();
   draw();
 }
 
 // ---------- схема ----------
 function draw(): void {
-  const st = states();
+  const st = tableStates;
   renderHall($('hall'), current, {
     states: st,
     selected: selectedId,
@@ -141,15 +112,8 @@ function draw(): void {
   $('mSeated').style.width = (c.seated / total) * 100 + '%';
   $('mBooked').style.width = (c.booked / total) * 100 + '%';
 
-  let free = 0, tables = 0;
-  for (const r of restaurants) {
-    tables += r.tables.length;
-    free += (statesBy[r.id] || []).filter((s) => s.state === 'free').length;
-  }
-  $('hsPlaces').textContent = String(restaurants.length);
-  $('hsPlacesLbl').textContent = plural(restaurants.length, 'заведение', 'заведения', 'заведений');
-  $('hsTables').textContent = String(tables);
-  $('hsFree').textContent = time ? String(free) : '—';
+  $('hsTables').textContent = String(current.tables.length);
+  $('hsFree').textContent = time ? String(c.free) : '—';
   renderPanel();
 }
 
@@ -257,14 +221,13 @@ function renderTicket({ b, t, r }: { b: Booking; t: Table; r: Restaurant }): voi
 // ---------- старт ----------
 async function init(): Promise<void> {
   const data = await api<RestaurantsResponse>('/api/restaurants');
-  restaurants = data.restaurants;
+  current = data.restaurants[0];
   config = data.config;
-  // ссылка вида /?date=2026-10-23&time=19:00&restaurant=sakura открывает нужный слот
+  // ссылка вида /?date=2026-10-23&time=19:00 открывает нужный слот
   const q = new URLSearchParams(location.search);
   const qDate = q.get('date') || '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(qDate) && qDate >= todayStr()) date = qDate;
   if (q.get('time')) time = q.get('time');
-  current = restaurants.find((r) => r.id === q.get('restaurant')) || restaurants[0];
   if (!slotsFor(date).length) { const d = new Date(); d.setDate(d.getDate() + 1); date = todayStr(d); }
   renderDays();
   renderTimes();

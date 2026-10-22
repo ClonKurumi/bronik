@@ -17,9 +17,7 @@
         Bron
       </a>
       <nav>
-        <a href="#book" class="hide-sm">Забронировать</a>
-        <a href="#how" class="hide-sm">Как это работает</a>
-        <a class="btn pill ghost" href="/admin">Для заведений</a>
+        <a class="icon-btn" href="/admin" title="Вход для заведений" aria-label="Вход для заведений"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg></a>
       </nav>
     </div>
   </header>
@@ -32,17 +30,14 @@
         <p>Без звонков и визитов наугад. Смотрите схему зала, выбирайте стол у окна или в тихом углу и получайте подтверждение мгновенно.</p>
       </div>
       <div class="hero-stats">
-        <div class="hero-stat"><b id="hsPlaces">–</b><span id="hsPlacesLbl">заведения</span></div>
-        <div class="hero-stat"><b id="hsTables">–</b><span>столов на схемах</span></div>
+        <div class="hero-stat"><b id="hsTables">–</b><span>столов в зале</span></div>
         <div class="hero-stat"><b id="hsFree">–</b><span>свободно на выбранное время</span></div>
       </div>
     </section>
 
     <div id="book">
-      <div class="step-title"><span class="n">1</span><h2>Выберите заведение</h2></div>
-      <div class="places" id="places"></div>
 
-      <div class="step-title"><span class="n">2</span><h2>Когда и сколько гостей</h2></div>
+      <div class="step-title"><span class="n">1</span><h2>Когда и сколько гостей</h2></div>
       <div class="card picker">
         <div class="picker-row"><span class="lbl">Дата</span><div class="chips" id="days"></div></div>
         <div class="picker-row"><span class="lbl">Время</span><div class="chips" id="times"></div></div>
@@ -55,7 +50,7 @@
         </div>
       </div>
 
-      <div class="step-title"><span class="n">3</span><h2>Выберите стол на схеме</h2></div>
+      <div class="step-title"><span class="n">2</span><h2>Выберите стол на схеме</h2></div>
       <div class="layout">
         <section class="card hall-card">
           <div class="hall-head">

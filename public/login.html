@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bron — вход для заведений</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Unbounded:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="login-page">
+    <form class="card login-card" id="loginForm" novalidate>
+      <a class="logo" href="/">
+        <span class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="6"/><path d="M8 20h8M12 16v4"/></svg></span>
+        Bron
+      </a>
+      <div>
+        <h1>Вход для заведений</h1>
+        <p>Введите пароль, чтобы открыть панель хостес</p>
+      </div>
+      <label class="field"><span>Пароль</span>
+        <input class="input" type="password" name="password" id="password" required autocomplete="current-password" autofocus></label>
+      <p class="error" id="err"></p>
+      <button class="btn block" type="submit">Войти</button>
+      <a class="login-back" href="/">← На сайт для гостей</a>
+    </form>
+  </main>
+  <script type="module" src="/js/client/login.js"></script>
+</body>
+</html>

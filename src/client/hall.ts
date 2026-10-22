@@ -160,6 +160,11 @@ export async function api<T>(url: string, options: { method?: string; body?: unk
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
   const data = await res.json().catch(() => ({}));
+  // вход в панель истёк или его не было — на страницу входа
+  if (res.status === 401 && location.pathname.startsWith('/admin')) {
+    location.href = '/login';
+    return new Promise<T>(() => {}); // страница уходит, дальше не продолжаем
+  }
   if (!res.ok) throw new Error(data.error || 'Ошибка запроса');
   return data as T;
 }

@@ -13,29 +13,21 @@ const TABS: [Tab, string][] = [
   ['seated', 'Сидят'],
   ['closed', 'Закрыты'],
 ];
-let restaurants: Restaurant[] = [];
 let current!: Restaurant; // задаётся в init
 let states: TableStatus[] = [];
 let bookings: Booking[] = [];
 let selectedId: string | null = null;
 let tab: Tab = 'all';
 
+$('logout').onclick = async () => {
+  await api('/api/logout', { method: 'POST' }).catch(() => {});
+  location.href = '/login';
+};
+
 function tick(): void {
   const d = new Date();
   $('clock').innerHTML = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) +
     `<small>${d.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })}</small>`;
-}
-
-function renderVenues(): void {
-  $('venues').innerHTML = '';
-  for (const r of restaurants) {
-    const b = document.createElement('button');
-    b.className = 'venue' + (r.id === current.id ? ' active' : '');
-    b.innerHTML = `<span class="av" style="background:${r.cover}">${escapeHtml(r.name[0])}</span>
-      <span><b>${escapeHtml(r.name)}</b><small>${escapeHtml(r.address)}</small></span>`;
-    b.onclick = () => { current = r; selectedId = null; renderVenues(); load(); };
-    $('venues').appendChild(b);
-  }
 }
 
 async function load(): Promise<void> {
@@ -190,9 +182,7 @@ async function run(fn: () => Promise<unknown>, msg: string): Promise<void> {
 
 async function init(): Promise<void> {
   const data = await api<RestaurantsResponse>('/api/restaurants');
-  restaurants = data.restaurants;
-  current = restaurants[0];
-  renderVenues();
+  current = data.restaurants[0];
   tick();
   await load();
   onLiveUpdate((msg) => { if (msg.restaurantId === current.id) load(); });
