@@ -5,11 +5,16 @@
 
 ## Запуск
 
-Нужен только Node.js 18+ (сторонние пакеты не нужны).
+Нужен Node.js 18+. Код написан на TypeScript, перед запуском он собирается в JS.
 
 ```
-npm start
+npm install
+npm run dev      # разработка: автосборка и перезапуск при изменениях
+npm start        # сборка + запуск сервера
 ```
+
+- `npm run build` — только собрать (сервер → `dist/`, браузер → `public/js/`)
+- `npm run typecheck` — проверить типы без сборки
 
 - Сайт для гостей: http://localhost:3000
 - Панель заведения (хостес): http://localhost:3000/admin
@@ -39,13 +44,16 @@ npm start
 ## Структура
 
 ```
-server.js              сервер и API
-data/restaurants.js    заведения и схемы залов (координаты столов)
-data/bookings.json     брони (создаётся сам, при первом запуске — с демо-данными)
-public/index.html      страница гостя
-public/admin.html      панель заведения
-public/hall.js         отрисовка схемы зала (SVG), общие функции
-public/style.css       стили (светлая и тёмная тема)
+src/server/server.ts       сервер и API
+src/server/restaurants.ts  заведения и схемы залов (координаты столов)
+src/shared/types.ts        общие типы (сервер + браузер)
+src/client/hall.ts         отрисовка схемы зала (SVG), общие функции
+src/client/index.ts        скрипт страницы гостя
+src/client/admin.ts        скрипт панели заведения
+public/index.html          страница гостя
+public/admin.html          панель заведения
+public/style.css           стили (светлая и тёмная тема)
+data/bookings.json         брони (создаётся сам, при первом запуске — с демо-данными)
 ```
 
 Чтобы сбросить данные к демо — удалите `data/bookings.json` и перезапустите сервер.

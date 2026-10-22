@@ -1,17 +1,21 @@
 // Общие функции: отрисовка схемы зала, подсказки и запросы к API.
-const SVG_NS = 'http://www.w3.org/2000/svg';
-const STATE_LABEL = { free: 'Свободен', booked: 'Забронирован', seated: 'Гости за столом' };
-const STATE_COLOR = { free: 'var(--free-2)', booked: 'var(--booked)', seated: 'var(--seated)' };
+import type { Decor, LiveMessage, Restaurant, Table, TableState, TableStatus } from '../shared/types.js';
 
-function el(name, attrs = {}, parent) {
+const SVG_NS = 'http://www.w3.org/2000/svg';
+export const STATE_LABEL: Record<TableState, string> = { free: 'Свободен', booked: 'Забронирован', seated: 'Гости за столом' };
+const STATE_COLOR: Record<TableState, string> = { free: 'var(--free-2)', booked: 'var(--booked)', seated: 'var(--seated)' };
+
+type Attrs = Record<string, string | number>;
+
+function el(name: string, attrs: Attrs = {}, parent?: Element): SVGElement {
   const node = document.createElementNS(SVG_NS, name);
-  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
   if (parent) parent.appendChild(node);
   return node;
 }
 
 // Стулья вокруг стола.
-function drawChairs(g, t) {
+function drawChairs(g: Element, t: Table): void {
   const n = t.seats;
   if (t.shape === 'round') {
     for (let i = 0; i < n; i++) {
@@ -35,7 +39,7 @@ function drawChairs(g, t) {
   }
 }
 
-function drawDefs(svg) {
+function drawDefs(svg: Element): void {
   const defs = el('defs', {}, svg);
   const p = el('pattern', { id: 'dots', width: 22, height: 22, patternUnits: 'userSpaceOnUse' }, defs);
   el('circle', { class: 'floor-dot', cx: 2, cy: 2, r: 1.3 }, p);
@@ -43,12 +47,12 @@ function drawDefs(svg) {
   el('feDropShadow', { dx: 0, dy: 3, stdDeviation: 3.5, 'flood-color': '#2a1d05', 'flood-opacity': 0.18 }, f);
 }
 
-function drawDecor(svg, d) {
+function drawDecor(svg: Element, d: Decor): void {
   const g = el('g', { class: `decor ${d.type}` }, svg);
   el('rect', { x: d.x, y: d.y, width: d.w, height: d.h, rx: d.type === 'zone' ? 18 : d.type === 'bar' ? 12 : 3 }, g);
   if (!d.label) return;
   const vertical = d.h > d.w * 2;
-  let attrs;
+  let attrs: Attrs;
   if (d.type === 'zone') attrs = { x: d.x + 16, y: d.y + d.h - 14 };
   else if (d.type === 'bar') attrs = { x: d.x + d.w / 2, y: d.y + d.h / 2 + 4, 'text-anchor': 'middle' };
   else if (vertical) attrs = { x: d.x + (d.x < 400 ? 22 : -10), y: d.y + d.h / 2, 'text-anchor': d.x < 400 ? 'start' : 'end' };
@@ -57,16 +61,20 @@ function drawDecor(svg, d) {
   t.textContent = d.label;
 }
 
-/**
- * Рисует зал в контейнере.
- * opts.states   — [{id, state, bookedFrom}]
- * opts.selected — id выбранного стола
- * opts.isDisabled(t, state) — стол нельзя выбрать (полупрозрачный)
- * opts.isLocked(t, state)   — стол нельзя кликнуть, цвет обычный
- * opts.onSelect(t, state)
- * opts.tipExtra(t, state)   — доп. строка в подсказке
- */
-function renderHall(container, restaurant, opts = {}) {
+export interface HallOptions {
+  states?: TableStatus[];
+  selected?: string | null;
+  /** стол нельзя выбрать (полупрозрачный) */
+  isDisabled?: (t: Table, s: TableStatus) => boolean;
+  /** стол нельзя кликнуть, цвет обычный */
+  isLocked?: (t: Table, s: TableStatus) => boolean;
+  onSelect?: (t: Table, s: TableStatus) => void;
+  /** доп. строка в подсказке */
+  tipExtra?: (t: Table, s: TableStatus) => string;
+}
+
+/** Рисует зал в контейнере. */
+export function renderHall(container: HTMLElement, restaurant: Restaurant, opts: HallOptions = {}): void {
   const stateById = Object.fromEntries((opts.states || []).map((s) => [s.id, s]));
   container.innerHTML = '';
   container.classList.add('hall');
@@ -84,7 +92,7 @@ function renderHall(container, restaurant, opts = {}) {
   for (const d of restaurant.decor) drawDecor(svg, d);
 
   for (const t of restaurant.tables) {
-    const s = stateById[t.id] || { state: 'free' };
+    const s: TableStatus = stateById[t.id] || { id: t.id, state: 'free', bookingId: null, bookedFrom: null };
     const disabled = opts.isDisabled ? opts.isDisabled(t, s) : false;
     const locked = opts.isLocked ? opts.isLocked(t, s) : false;
     const selected = opts.selected === t.id;
@@ -93,10 +101,10 @@ function renderHall(container, restaurant, opts = {}) {
     if (locked) cls.push('locked');
     if (selected) cls.push('selected');
 
-    const interactive = !disabled && !locked && opts.onSelect;
+    const onSelect = !disabled && !locked ? opts.onSelect : undefined;
     const g = el('g', {
       class: cls.join(' '),
-      tabindex: interactive ? 0 : -1,
+      tabindex: onSelect ? 0 : -1,
       role: 'button',
       'aria-label': `Стол ${t.id}, ${t.seats} мест, ${STATE_LABEL[s.state]}`,
     }, svg);
@@ -109,7 +117,7 @@ function renderHall(container, restaurant, opts = {}) {
       el('rect', { class: 'ring', x: t.x - t.w / 2 - 6, y: t.y - t.h / 2 - 6, width: t.w + 12, height: t.h + 12, rx: 16 }, g);
       el('rect', { class: 'shape', x: t.x - t.w / 2, y: t.y - t.h / 2, width: t.w, height: t.h, rx: 12 }, g);
     }
-    const small = t.r && t.r < 30;
+    const small = t.shape === 'round' && t.r < 30;
     const label = el('text', { class: 'tid', x: t.x, y: t.y + (small ? 5 : -1), 'text-anchor': 'middle' }, g);
     label.textContent = t.id;
     if (!small) {
@@ -134,58 +142,69 @@ function renderHall(container, restaurant, opts = {}) {
     });
     g.addEventListener('mouseleave', () => tip.classList.remove('show'));
 
-    if (interactive) {
-      const pick = () => opts.onSelect(t, s);
+    if (onSelect) {
+      const pick = () => onSelect(t, s);
       g.addEventListener('click', pick);
       g.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); }
+        const key = (e as KeyboardEvent).key;
+        if (key === 'Enter' || key === ' ') { e.preventDefault(); pick(); }
       });
     }
   }
 }
 
-async function api(url, options = {}) {
+export async function api<T>(url: string, options: { method?: string; body?: unknown } = {}): Promise<T> {
   const res = await fetch(url, {
-    ...options,
+    method: options.method,
     headers: { 'Content-Type': 'application/json' },
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'Ошибка запроса');
-  return data;
+  return data as T;
 }
 
 // Подписка на живые обновления от сервера.
-function onLiveUpdate(cb) {
+export function onLiveUpdate(cb: (msg: LiveMessage) => void): EventSource | null {
   if (location.search.includes('nolive')) return null; // для скриншотов/тестов
   const es = new EventSource('/api/events');
-  es.onmessage = (e) => cb(JSON.parse(e.data));
+  es.onmessage = (e) => cb(JSON.parse(e.data) as LiveMessage);
   return es;
 }
 
-function plural(n, one, few, many) {
+/** Достаёт элемент по id; падает, если его нет в разметке. */
+export function $<T extends HTMLElement = HTMLElement>(id: string): T {
+  const node = document.getElementById(id);
+  if (!node) throw new Error(`Нет элемента #${id}`);
+  return node as T;
+}
+
+export function plural(n: number, one: string, few: string, many: string): string {
   const m10 = n % 10, m100 = n % 100;
   if (m10 === 1 && m100 !== 11) return one;
   if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few;
   return many;
 }
-function pad(n) { return String(n).padStart(2, '0'); }
-function todayStr(d = new Date()) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
-function parseDate(s) { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); }
-function formatDate(s) {
+export function pad(n: number): string { return String(n).padStart(2, '0'); }
+export function todayStr(d = new Date()): string { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
+function parseDate(s: string): Date { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); }
+export function formatDate(s: string): string {
   if (s === todayStr()) return 'Сегодня';
   const tm = new Date(); tm.setDate(tm.getDate() + 1);
   if (s === todayStr(tm)) return 'Завтра';
   return parseDate(s).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
 }
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const HTML_ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+export function escapeHtml(s: unknown): string {
+  return String(s).replace(/[&<>"']/g, (c) => HTML_ESC[c]);
 }
-function toast(msg) {
-  let t = document.querySelector('.toast');
+let toastTimer: ReturnType<typeof setTimeout> | undefined;
+export function toast(msg: string): void {
+  let t = document.querySelector<HTMLElement>('.toast');
   if (!t) { t = document.createElement('div'); t.className = 'toast'; document.body.appendChild(t); }
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(t._h);
-  t._h = setTimeout(() => t.classList.remove('show'), 2600);
+  const box = t;
+  box.textContent = msg;
+  box.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => box.classList.remove('show'), 2600);
 }

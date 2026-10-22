@@ -3,7 +3,9 @@
 // shape: 'round' (r = радиус) или 'rect' (w × h).
 // decor — элементы зала (окна, бар, вход), только для отображения.
 
-const restaurants = [
+import type { Restaurant } from '../shared/types.js';
+
+export const restaurants: Restaurant[] = [
   {
     id: 'sakura',
     name: 'Sakura',
@@ -33,34 +35,4 @@ const restaurants = [
       { id: 'S12', shape: 'round', x: 700, y: 330, r: 24, seats: 1, zone: 'Барная стойка' },
     ],
   },
-  {
-    id: 'trattoria',
-    name: 'Trattoria Roma',
-    cuisine: 'Итальянская кухня',
-    address: 'пр. Ленина, 45',
-    cover: 'linear-gradient(135deg, #f2a541, #c4561e)',
-    tags: ['Паста', 'Терраса', 'Банкеты'],
-    hours: '10:00–23:00',
-    decor: [
-      { type: 'window', x: -4, y: 40, w: 8, h: 440, label: 'Окна' },
-      { type: 'bar', x: 600, y: 30, w: 170, h: 70, label: 'Бар' },
-      { type: 'entrance', x: 796, y: 220, w: 8, h: 100, label: 'Вход' },
-      { type: 'zone', x: 520, y: 330, w: 260, h: 170, label: 'Терраса' },
-    ],
-    tables: [
-      { id: 'T1', shape: 'rect', x: 90, y: 90, w: 90, h: 64, seats: 4, zone: 'У окна' },
-      { id: 'T2', shape: 'rect', x: 90, y: 210, w: 90, h: 64, seats: 4, zone: 'У окна' },
-      { id: 'T3', shape: 'rect', x: 90, y: 330, w: 90, h: 64, seats: 4, zone: 'У окна' },
-      { id: 'T4', shape: 'round', x: 90, y: 440, r: 34, seats: 2, zone: 'У окна' },
-      { id: 'T5', shape: 'round', x: 270, y: 120, r: 40, seats: 4, zone: 'Центр зала' },
-      { id: 'T6', shape: 'round', x: 420, y: 120, r: 40, seats: 4, zone: 'Центр зала' },
-      { id: 'T7', shape: 'rect', x: 340, y: 280, w: 200, h: 80, seats: 8, zone: 'Банкетный стол' },
-      { id: 'T8', shape: 'round', x: 270, y: 440, r: 34, seats: 2, zone: 'Центр зала' },
-      { id: 'T9', shape: 'round', x: 410, y: 440, r: 34, seats: 2, zone: 'Центр зала' },
-      { id: 'T10', shape: 'round', x: 600, y: 410, r: 38, seats: 4, zone: 'Терраса' },
-      { id: 'T11', shape: 'round', x: 710, y: 410, r: 38, seats: 4, zone: 'Терраса' },
-    ],
-  },
 ];
-
-module.exports = { restaurants };

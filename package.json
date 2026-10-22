@@ -2,9 +2,16 @@
   "name": "bron",
   "version": "0.1.0",
   "description": "MVP сервиса бронирования столиков с интерактивной схемой зала",
-  "main": "server.js",
+  "main": "dist/server/server.js",
   "scripts": {
-    "start": "node server.js"
+    "build": "tsc -p tsconfig.server.json && tsc -p tsconfig.client.json",
+    "start": "npm run build && node dist/server/server.js",
+    "dev": "node scripts/dev.mjs",
+    "typecheck": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.client.json --noEmit"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  }
 }
