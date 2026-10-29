@@ -8,11 +8,11 @@ import type { Restaurant } from '../shared/types.js';
 export const restaurants: Restaurant[] = [
   {
     id: 'sakura',
-    name: 'Sakura',
-    cuisine: 'Японская кухня',
+    name: 'База отдыха "Форель"',
+    cuisine: '',
     address: 'ул. Пушкина, 12',
     cover: 'linear-gradient(135deg, #f0607a, #b8325a)',
-    tags: ['Суши', 'Бар', 'Тихий угол'],
+    tags: ['Беседки', 'Озеро', 'Мангал'],
     hours: '10:00–23:00',
     decor: [
       { type: 'window', x: 40, y: -4, w: 720, h: 8, label: 'Окна' },

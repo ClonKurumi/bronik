@@ -70,5 +70,17 @@
     "guests": 6,
     "status": "cancelled",
     "createdAt": "2026-10-21T20:27:56.930Z"
+  },
+  {
+    "id": "2abe0d11",
+    "restaurantId": "sakura",
+    "tableId": "S4",
+    "date": "2026-10-22",
+    "time": "14:25",
+    "name": "Гости без брони",
+    "phone": "",
+    "guests": 2,
+    "status": "seated",
+    "createdAt": "2026-10-22T08:25:29.260Z"
   }
 ]
