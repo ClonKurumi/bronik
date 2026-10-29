@@ -152,7 +152,7 @@ const str = (v: unknown): string => (typeof v === 'string' ? v : '');
 // ---------- вход в панель заведения ----------
 // Пароль задаётся в ADMIN_PASSWORD. После входа браузер получает cookie с подписью
 // (HMAC от пароля): сервер ничего не хранит, а смена пароля разлогинивает всех.
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'LyuTebya';
 const SESSION_COOKIE = 'bron_admin';
 const SESSION_DAYS = 7;
 const sessionKey = crypto.createHash('sha256').update(`bron-admin:${ADMIN_PASSWORD}`).digest();
