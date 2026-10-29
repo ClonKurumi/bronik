@@ -2,7 +2,9 @@
 import type {
   Booking, BookingsResponse, BookingStatus, Restaurant, RestaurantsResponse, TablesResponse, TableStatus,
 } from '../shared/types.js';
-import { $, STATE_LABEL, api, escapeHtml, onLiveUpdate, plural, renderHall, toast, todayStr } from './hall.js';
+import {
+  $, STATE_LABEL, api, escapeHtml, getSeatingStats, onLiveUpdate, parseSeatedMs, plural, renderHall, toast, todayStr,
+} from './hall.js';
 
 type Tab = 'all' | 'booked' | 'seated' | 'closed';
 
@@ -18,6 +20,7 @@ let states: TableStatus[] = [];
 let bookings: Booking[] = [];
 let selectedId: string | null = null;
 let tab: Tab = 'all';
+let liveTimerInterval: ReturnType<typeof setInterval> | null = null;
 
 $('logout').onclick = async () => {
   await api('/api/logout', { method: 'POST' }).catch(() => {});
@@ -47,6 +50,13 @@ function draw(): void {
     selected: selectedId,
     tipExtra: (_t, s) => {
       const b = bookings.find((x) => x.id === s.bookingId);
+      if (s.state === 'seated') {
+        const ms = parseSeatedMs((b && b.seatedAt) || s.seatedAt, b ? b.date : undefined, b ? b.time : undefined);
+        const stats = ms ? getSeatingStats(ms) : null;
+        const timeInfo = stats ? `⏱️ Сели в ${stats.seatedTimeStr} (сидят ${stats.elapsedFormatted})` : '';
+        const guestInfo = b ? `${escapeHtml(b.name)} · ${b.guests} гост.` : '';
+        return [guestInfo, timeInfo].filter(Boolean).join('<br>');
+      }
       return b ? `${escapeHtml(b.name)} · ${b.guests} гост.` : '';
     },
     onSelect: (t) => { selectedId = t.id; draw(); },
@@ -73,6 +83,11 @@ function initials(name: string): string {
 }
 
 function renderPanel(): void {
+  if (liveTimerInterval) {
+    clearInterval(liveTimerInterval);
+    liveTimerInterval = null;
+  }
+
   const p = $('panel');
   const t = current.tables.find((x) => x.id === selectedId);
   const s = t && states.find((x) => x.id === t.id);
@@ -88,6 +103,8 @@ function renderPanel(): void {
       <span class="st-badge ${s.state}">${STATE_LABEL[s.state]}</span>
     </div>
     <div class="muted" style="font-size:14px;margin-top:2px">${escapeHtml(t.zone)} · ${t.seats} ${plural(t.seats, 'место', 'места', 'мест')}</div>`;
+
+  // Карточка гостя
   if (b) {
     html += `<div class="guest">
       <div class="av">${escapeHtml(initials(b.name))}</div>
@@ -96,6 +113,62 @@ function renderPanel(): void {
   } else {
     html += '<div style="height:14px"></div>';
   }
+
+  // Если гости сидят — выводим таймер посадки с отсчётом времени
+  if (s.state === 'seated') {
+    const seatedIso = (b && b.seatedAt) || s.seatedAt || (b && b.createdAt);
+    const seatedMs = parseSeatedMs(seatedIso, b ? b.date : undefined, b ? b.time : undefined) || Date.now();
+    const stats = getSeatingStats(seatedMs);
+
+    html += `
+      <div class="seated-timer-card">
+        <div class="st-timer-head">
+          <div class="st-timer-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          </div>
+          <div>
+            <div class="st-timer-title">Отсчёт времени</div>
+            <div class="st-timer-seated-at">Сели в <b>${stats.seatedTimeStr}</b></div>
+          </div>
+        </div>
+
+        <div class="st-timer-body">
+          <span class="st-timer-val ${stats.isOverLimit ? 'danger' : stats.isWarning ? 'warn' : ''}" id="liveTimerVal">${stats.timerDigits}</span>
+          <span class="st-timer-label">время за столом</span>
+        </div>
+
+        <div class="st-progress">
+          <div class="st-progress-bar">
+            <div class="st-progress-fill ${stats.isOverLimit ? 'danger' : stats.isWarning ? 'warn' : ''}" id="liveProgressFill" style="width: ${stats.progressPct}%"></div>
+          </div>
+          <div class="st-progress-info">
+            <span>Лимит: 2 часа</span>
+            <b id="liveRemaining" class="${stats.isOverLimit ? 'text-danger' : stats.isWarning ? 'text-warn' : ''}">${stats.remainingText}</b>
+          </div>
+        </div>
+      </div>`;
+
+    // Запускаем тикающий таймер каждую секунду
+    liveTimerInterval = setInterval(() => {
+      const curStats = getSeatingStats(seatedMs);
+      const valEl = document.getElementById('liveTimerVal');
+      const barEl = document.getElementById('liveProgressFill');
+      const remEl = document.getElementById('liveRemaining');
+      if (valEl) {
+        valEl.textContent = curStats.timerDigits;
+        valEl.className = `st-timer-val ${curStats.isOverLimit ? 'danger' : curStats.isWarning ? 'warn' : ''}`;
+      }
+      if (barEl) {
+        barEl.style.width = `${curStats.progressPct}%`;
+        barEl.className = `st-progress-fill ${curStats.isOverLimit ? 'danger' : curStats.isWarning ? 'warn' : ''}`;
+      }
+      if (remEl) {
+        remEl.textContent = curStats.remainingText;
+        remEl.className = curStats.isOverLimit ? 'text-danger' : curStats.isWarning ? 'text-warn' : '';
+      }
+    }, 1000);
+  }
+
   html += '<div class="actions">';
   if (s.state === 'free') {
     html += `
@@ -147,12 +220,26 @@ function renderList(): void {
   const list = bookings.filter((b) => inTab(b, tab));
   const ul = $('list');
   if (!list.length) { ul.innerHTML = '<li class="empty">Здесь пока пусто</li>'; return; }
-  ul.innerHTML = list.map((b) => `
+  ul.innerHTML = list.map((b) => {
+    let seatedBadge = '';
+    if (b.status === 'seated') {
+      const ms = parseSeatedMs(b.seatedAt, b.date, b.time);
+      if (ms) {
+        const stats = getSeatingStats(ms);
+        seatedBadge = `<div class="seated-chip">⏱️ Сели в ${stats.seatedTimeStr} · ${stats.elapsedFormatted}</div>`;
+      }
+    }
+    return `
     <li data-table="${b.tableId}">
       <span class="time">${b.time}</span>
-      <span class="who"><b>${escapeHtml(b.name)}</b><small>Стол ${b.tableId} · ${b.guests} гост.</small></span>
+      <span class="who">
+        <b>${escapeHtml(b.name)}</b>
+        <small>Стол ${b.tableId} · ${b.guests} гост.</small>
+        ${seatedBadge}
+      </span>
       <span class="st-badge ${b.status}">${STATUS[b.status]}</span>
-    </li>`).join('');
+    </li>`;
+  }).join('');
   ul.querySelectorAll<HTMLElement>('li[data-table]').forEach((li) => {
     li.onclick = () => { selectedId = li.dataset.table ?? null; draw(); };
   });

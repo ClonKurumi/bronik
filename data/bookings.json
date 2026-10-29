@@ -81,6 +81,20 @@
     "phone": "",
     "guests": 2,
     "status": "seated",
-    "createdAt": "2026-10-22T08:25:29.260Z"
+    "createdAt": "2026-10-22T08:25:29.260Z",
+    "seatedAt": "2026-10-22T08:25:29.260Z"
+  },
+  {
+    "id": "658ea774",
+    "restaurantId": "sakura",
+    "tableId": "S4",
+    "date": "2026-10-29",
+    "time": "14:34",
+    "name": "Гости без брони",
+    "phone": "",
+    "guests": 2,
+    "status": "done",
+    "createdAt": "2026-10-29T08:34:00.615Z",
+    "seatedAt": "2026-10-29T08:34:00.615Z"
   }
 ]

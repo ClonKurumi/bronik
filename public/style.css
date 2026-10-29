@@ -781,6 +781,147 @@ footer.foot .wrap { display: flex; justify-content: space-between; gap: 12px; fl
 .guest .av { width: 40px; height: 40px; border-radius: 50%; background: var(--line); display: grid; place-items: center; font-weight: 800; flex: none; }
 .guest b { display: block; font-size: 15px; }
 .guest small { color: var(--muted); font-size: 13px; }
+
+/* Карточка таймера посадки */
+.seated-timer-card {
+  background: var(--surface-2);
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+  margin: 14px 0;
+  display: grid;
+  gap: 12px;
+}
+.st-timer-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.st-timer-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--seated-soft);
+  color: var(--seated);
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.st-timer-icon svg {
+  width: 20px;
+  height: 20px;
+}
+.st-timer-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+}
+.st-timer-seated-at {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+.st-timer-seated-at b {
+  color: var(--ink);
+}
+.st-timer-body {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+}
+.st-timer-val {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--seated);
+  line-height: 1.1;
+}
+.st-timer-val.warn {
+  color: var(--gold);
+}
+.st-timer-val.danger {
+  color: var(--booked);
+}
+.st-timer-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 4px;
+}
+.st-progress {
+  display: grid;
+  gap: 6px;
+}
+.st-progress-bar {
+  height: 8px;
+  border-radius: 99px;
+  background: var(--line);
+  overflow: hidden;
+}
+.st-progress-fill {
+  height: 100%;
+  background: var(--seated);
+  border-radius: 99px;
+  transition: width 0.3s;
+}
+.st-progress-fill.warn {
+  background: var(--gold);
+}
+.st-progress-fill.danger {
+  background: var(--booked);
+}
+.st-progress-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.text-warn {
+  color: var(--gold) !important;
+}
+.text-danger {
+  color: var(--booked) !important;
+}
+.seated-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--seated);
+  background: var(--seated-soft);
+  padding: 2px 7px;
+  border-radius: 6px;
+  margin-top: 3px;
+  width: fit-content;
+}
+@media (prefers-color-scheme: dark) {
+  .st-timer-icon {
+    color: #8fb5ff;
+  }
+  .st-timer-val {
+    color: #8fb5ff;
+  }
+  .st-timer-val.warn, .text-warn {
+    color: #f7b750 !important;
+  }
+  .st-timer-val.danger, .text-danger {
+    color: #ff8a8a !important;
+  }
+  .seated-chip {
+    color: #8fb5ff;
+    background: #172540;
+  }
+}
 .actions { display: grid; gap: 8px; }
 .actions-row { display: flex; gap: 8px; }
 .actions-row > * { flex: 1; }

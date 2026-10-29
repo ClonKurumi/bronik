@@ -61,16 +61,23 @@ function seedDemo(): Booking[] {
   const now = nowParts();
   const h = new Date().getHours();
   const soon = `${pad(Math.min(Math.max(h + 1, OPEN_HOUR), CLOSE_HOUR - BOOKING_HOURS))}:00`;
-  const mk = (restaurantId: string, tableId: string, time: string, name: string, guests: number, status: BookingStatus): Booking => ({
-    id: newId(),
-    restaurantId, tableId, date: now.date, time, name,
-    phone: status === 'seated' && name === 'Гости без брони' ? '' : '+7 900 123-45-67',
-    guests, status, createdAt: new Date().toISOString(),
-  });
+  const mk = (restaurantId: string, tableId: string, time: string, name: string, guests: number, status: BookingStatus, seatedMinAgo?: number): Booking => {
+    const nowMs = Date.now();
+    const seatedIso = status === 'seated'
+      ? new Date(nowMs - (seatedMinAgo || 35) * 60 * 1000).toISOString()
+      : undefined;
+    return {
+      id: newId(),
+      restaurantId, tableId, date: now.date, time, name,
+      phone: status === 'seated' && name === 'Гости без брони' ? '' : '+7 900 123-45-67',
+      guests, status, createdAt: seatedIso || new Date().toISOString(),
+      seatedAt: seatedIso,
+    };
+  };
   return [
-    mk('sakura', 'S3', now.time, 'Анна', 3, 'seated'),
-    mk('sakura', 'S6', now.time, 'Гости без брони', 2, 'seated'),
-    mk('sakura', 'S8', now.time, 'Гости без брони', 2, 'seated'),
+    mk('sakura', 'S3', now.time, 'Анна', 3, 'seated', 25),
+    mk('sakura', 'S6', now.time, 'Гости без брони', 2, 'seated', 50),
+    mk('sakura', 'S8', now.time, 'Гости без брони', 2, 'seated', 85),
     mk('sakura', 'S1', soon, 'Илья', 2, 'booked'),
     mk('sakura', 'S5', soon, 'Марина', 5, 'booked'),
     mk('sakura', 'S10', soon, 'Корпоратив ООО «Ромашка»', 6, 'booked'),
@@ -78,6 +85,13 @@ function seedDemo(): Booking[] {
 }
 
 const loaded = loadBookings();
+if (loaded) {
+  for (const b of loaded) {
+    if (b.status === 'seated' && !b.seatedAt) {
+      b.seatedAt = b.createdAt || new Date().toISOString();
+    }
+  }
+}
 const bookings: Booking[] = loaded ?? seedDemo();
 if (!loaded) save();
 
@@ -107,6 +121,7 @@ function tableStates(restaurantId: string | null, date: string, time: string): T
       state: seated ? 'seated' : booked ? 'booked' : 'free',
       bookingId: current ? current.id : null,
       bookedFrom: current ? current.time : null,
+      seatedAt: seated ? (seated.seatedAt || seated.createdAt) : null,
     };
   });
 }
@@ -362,6 +377,9 @@ async function api(req: Req, res: Res, url: URL): Promise<void> {
     if (status !== 'seated' && status !== 'done' && status !== 'cancelled') {
       return sendJson(res, 400, { error: 'Неверный статус' });
     }
+    if (status === 'seated' && b.status !== 'seated') {
+      b.seatedAt = new Date().toISOString();
+    }
     b.status = status;
     save();
     broadcast(b.restaurantId);
@@ -378,6 +396,7 @@ async function api(req: Req, res: Res, url: URL): Promise<void> {
     const now = nowParts();
     const state = tableStates(restaurantId, now.date, now.time)?.find((s) => s.id === tableId);
     if (state?.state !== 'free') return sendJson(res, 409, { error: 'Стол сейчас не свободен' });
+    const nowIso = new Date().toISOString();
     const booking: Booking = {
       id: newId(),
       restaurantId,
@@ -388,7 +407,8 @@ async function api(req: Req, res: Res, url: URL): Promise<void> {
       phone: '',
       guests: Number(body.guests) || 1,
       status: 'seated',
-      createdAt: new Date().toISOString(),
+      createdAt: nowIso,
+      seatedAt: nowIso,
     };
     bookings.push(booking);
     save();

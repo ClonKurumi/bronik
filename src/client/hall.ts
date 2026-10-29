@@ -132,9 +132,20 @@ export function renderHall(container: HTMLElement, restaurant: Restaurant, opts:
       const top = t.shape === 'round' ? t.y - t.r - 14 : t.y - t.h / 2 - 18;
       tip.style.left = `${(t.x + 14) * k}px`;
       tip.style.top = `${(top + 14) * k}px`;
+      let stExtra = '';
+      if (s.state === 'seated') {
+        const ms = parseSeatedMs(s.seatedAt, undefined, s.bookedFrom ?? undefined);
+        if (ms) {
+          const stats = getSeatingStats(ms);
+          stExtra = ` · сели в ${stats.seatedTimeStr} (${stats.elapsedFormatted})`;
+        } else if (s.bookedFrom) {
+          stExtra = ` с ${s.bookedFrom}`;
+        }
+      } else if (s.state !== 'free' && s.bookedFrom) {
+        stExtra = ` с ${s.bookedFrom}`;
+      }
       let html = `<b>Стол ${t.id}</b> · ${t.seats} ${plural(t.seats, 'место', 'места', 'мест')} · ${t.zone}<br>
-        <span class="st"><i style="background:${STATE_COLOR[s.state]}"></i>${STATE_LABEL[s.state]}${
-          s.state !== 'free' && s.bookedFrom ? ` с ${s.bookedFrom}` : ''}</span>`;
+        <span class="st"><i style="background:${STATE_COLOR[s.state]}"></i>${STATE_LABEL[s.state]}${stExtra}</span>`;
       const extra = opts.tipExtra && opts.tipExtra(t, s);
       if (extra) html += `<br><span class="st">${extra}</span>`;
       tip.innerHTML = html;
@@ -151,6 +162,76 @@ export function renderHall(container: HTMLElement, restaurant: Restaurant, opts:
       });
     }
   }
+}
+
+export function parseSeatedMs(seatedAt: string | undefined | null, bookingDate?: string, bookingTime?: string): number | null {
+  if (!seatedAt && !bookingTime) return null;
+  if (seatedAt && seatedAt.includes('T')) {
+    const ms = new Date(seatedAt).getTime();
+    if (!isNaN(ms)) return ms;
+  }
+  const timePart = seatedAt && /^\d{2}:\d{2}$/.test(seatedAt) ? seatedAt : bookingTime;
+  if (!timePart) return null;
+  const dPart = bookingDate || todayStr();
+  const ms = new Date(`${dPart}T${timePart}:00`).getTime();
+  return isNaN(ms) ? null : ms;
+}
+
+export function getSeatingStats(seatedMs: number): {
+  seatedTimeStr: string;
+  elapsedMinutes: number;
+  elapsedFormatted: string;
+  timerDigits: string;
+  progressPct: number;
+  isOverLimit: boolean;
+  isWarning: boolean;
+  remainingText: string;
+} {
+  const diffMs = Math.max(0, Date.now() - seatedMs);
+  const totalSec = Math.floor(diffMs / 1000);
+  const totalMin = Math.floor(totalSec / 60);
+  const hours = Math.floor(totalMin / 60);
+  const mins = totalMin % 60;
+  const secs = totalSec % 60;
+
+  const seatedDate = new Date(seatedMs);
+  const seatedTimeStr = `${pad(seatedDate.getHours())}:${pad(seatedDate.getMinutes())}`;
+
+  let elapsedFormatted = '';
+  if (hours > 0) {
+    elapsedFormatted = `${hours} ч ${mins} мин`;
+  } else {
+    elapsedFormatted = `${mins} мин`;
+  }
+
+  const timerDigits = hours > 0
+    ? `${pad(hours)}:${pad(mins)}:${pad(secs)}`
+    : `${pad(mins)}:${pad(secs)}`;
+
+  const limitMinutes = 120;
+  const progressPct = Math.min(100, Math.round((totalMin / limitMinutes) * 100));
+  const isOverLimit = totalMin >= limitMinutes;
+  const isWarning = totalMin >= 90 && !isOverLimit;
+
+  let remainingText = '';
+  if (isOverLimit) {
+    const overMin = totalMin - limitMinutes;
+    remainingText = `Превышение на ${overMin >= 60 ? `${Math.floor(overMin / 60)} ч ${overMin % 60} мин` : `${overMin} мин`}`;
+  } else {
+    const remMin = limitMinutes - totalMin;
+    remainingText = `Осталось ~${remMin >= 60 ? `${Math.floor(remMin / 60)} ч ${remMin % 60} мин` : `${remMin} мин`}`;
+  }
+
+  return {
+    seatedTimeStr,
+    elapsedMinutes: totalMin,
+    elapsedFormatted,
+    timerDigits,
+    progressPct,
+    isOverLimit,
+    isWarning,
+    remainingText,
+  };
 }
 
 export async function api<T>(url: string, options: { method?: string; body?: unknown } = {}): Promise<T> {

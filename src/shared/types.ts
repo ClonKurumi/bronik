@@ -47,6 +47,7 @@ export interface Booking {
   guests: number;
   status: BookingStatus;
   createdAt: string;
+  seatedAt?: string; // когда сели за стол (ISO timestamp)
 }
 
 export interface TableStatus {
@@ -54,6 +55,7 @@ export interface TableStatus {
   state: TableState;
   bookingId: string | null;
   bookedFrom: string | null;
+  seatedAt?: string | null;
 }
 
 export interface Config {
